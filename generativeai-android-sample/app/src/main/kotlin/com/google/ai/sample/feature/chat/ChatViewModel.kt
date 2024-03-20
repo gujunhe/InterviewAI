@@ -16,32 +16,45 @@
 
 package com.google.ai.sample.feature.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bytedance.speech.speechengine.SpeechEngineGenerator
 import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.asTextOrNull
-import com.google.ai.client.generativeai.type.content
+import com.google.ai.sample.MyApplication
+import com.google.ai.sample.model.ChatMessage
+import com.google.ai.sample.model.ChatRequest
+import com.google.ai.sample.model.ChatResponse
+import com.google.ai.sample.model.Message
+import com.google.ai.sample.model.RoleType
+import com.google.ai.sample.network.BaiDuApiService
+import com.google.ai.sample.network.BaiDuRetrofit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import retrofit2.Call
+import retrofit2.Response
+
 
 class ChatViewModel(
     generativeModel: GenerativeModel
 ) : ViewModel() {
-    private val chat = generativeModel.startChat(
-        history = listOf(
-            content(role = "user") { text("Hello, I have 2 dogs in my house.") },
-            content(role = "model") { text("Great to meet you. What would you like to know?") }
+    private val historyChat = mutableListOf(
+        ChatMessage(role = RoleType.USER, content = "你好"),
+        ChatMessage(
+            role = RoleType.ASSISTANT,
+            content = "有什么能帮你的吗"
         )
     )
 
+
     private val _uiState: MutableStateFlow<ChatUiState> =
-        MutableStateFlow(ChatUiState(chat.history.map { content ->
+        MutableStateFlow(ChatUiState(historyChat.map { content ->
             // Map the initial messages
             ChatMessage(
-                text = content.parts.first().asTextOrNull() ?: "",
-                participant = if (content.role == "user") Participant.USER else Participant.MODEL,
+                content = content.content ?: "",
+                role = if (content.role == RoleType.USER) RoleType.USER else RoleType.ASSISTANT,
                 isPending = false
             )
         }))
@@ -49,40 +62,70 @@ class ChatViewModel(
         _uiState.asStateFlow()
 
 
+    private val accessToken: String? = getToken()
     fun sendMessage(userMessage: String) {
         // Add a pending message
         _uiState.value.addMessage(
             ChatMessage(
-                text = userMessage,
-                participant = Participant.USER,
+                content = userMessage,
+                role = RoleType.USER,
                 isPending = true
             )
         )
-
+        historyChat.add(ChatMessage(
+            content = userMessage,
+            role = RoleType.USER,
+        ))
         viewModelScope.launch {
             try {
-                val response = chat.sendMessage(userMessage)
+                val token = accessToken ?: getToken()
+                val apiService = BaiDuRetrofit.createService(BaiDuApiService::class.java)
+                val messageList = historyChat.map { it -> Message(it.role.value, it.content) }
+                val chatRequest = ChatRequest(messageList)
+                token?.let {
+                    apiService.sendMessage(it, chatRequest)
+                        .enqueue(object : retrofit2.Callback<ChatResponse> {
+                            override fun onResponse(
+                                call: Call<ChatResponse>,
+                                response: Response<ChatResponse>
+                            ) {
+                                Log.d("NetWorkLog", response.body().toString())
+                                _uiState.value.replaceLastPendingMessage()
+                                response.body()?.result?.let { modelResponse ->
+                                    _uiState.value.addMessage(
+                                        ChatMessage(
+                                            content = modelResponse,
+                                            role = RoleType.ASSISTANT,
+                                            isPending = false
+                                        )
+                                    )
+                                    historyChat.add(ChatMessage(
+                                        content = modelResponse,
+                                        role = RoleType.ASSISTANT,
+                                    ))
+                                }
+                            }
 
-                _uiState.value.replaceLastPendingMessage()
+                            override fun onFailure(call: Call<ChatResponse>, t: Throwable) {
+                                TODO("Not yet implemented")
+                            }
 
-                response.text?.let { modelResponse ->
-                    _uiState.value.addMessage(
-                        ChatMessage(
-                            text = modelResponse,
-                            participant = Participant.MODEL,
-                            isPending = false
-                        )
-                    )
+                        })
                 }
+
             } catch (e: Exception) {
                 _uiState.value.replaceLastPendingMessage()
                 _uiState.value.addMessage(
                     ChatMessage(
-                        text = e.localizedMessage,
-                        participant = Participant.ERROR
+                        content = e.localizedMessage,
+                        role = RoleType.ERROR
                     )
                 )
             }
         }
+    }
+
+    private fun getToken(): String? {
+        return MyApplication.getSharedPreferences().getString("TOKEN_KEY", null)
     }
 }

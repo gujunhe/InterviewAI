@@ -58,9 +58,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.ai.sample.GenerativeViewModelFactory
 import com.google.ai.sample.R
-import com.google.ai.sample.ui.theme.GenerativeAISample
+import com.google.ai.sample.model.ChatMessage
+import com.google.ai.sample.model.RoleType
 import kotlinx.coroutines.launch
-
+@Preview
 @Composable
 internal fun ChatRoute(
     chatViewModel: ChatViewModel = viewModel(factory = GenerativeViewModelFactory)
@@ -113,13 +114,13 @@ fun ChatList(
 fun ChatBubbleItem(
     chatMessage: ChatMessage
 ) {
-    val isModelMessage = chatMessage.participant == Participant.MODEL ||
-            chatMessage.participant == Participant.ERROR
+    val isModelMessage = chatMessage.role == RoleType.ASSISTANT ||
+            chatMessage.role == RoleType.ERROR
 
-    val backgroundColor = when (chatMessage.participant) {
-        Participant.MODEL -> MaterialTheme.colorScheme.primaryContainer
-        Participant.USER -> MaterialTheme.colorScheme.tertiaryContainer
-        Participant.ERROR -> MaterialTheme.colorScheme.errorContainer
+    val backgroundColor = when (chatMessage.role) {
+        RoleType.ASSISTANT -> MaterialTheme.colorScheme.primaryContainer
+        RoleType.USER -> MaterialTheme.colorScheme.tertiaryContainer
+        RoleType.ERROR -> MaterialTheme.colorScheme.errorContainer
     }
 
     val bubbleShape = if (isModelMessage) {
@@ -141,7 +142,7 @@ fun ChatBubbleItem(
             .fillMaxWidth()
     ) {
         Text(
-            text = chatMessage.participant.name,
+            text = chatMessage.role.name,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = 4.dp)
         )
@@ -160,7 +161,7 @@ fun ChatBubbleItem(
                     modifier = Modifier.widthIn(0.dp, maxWidth * 0.9f)
                 ) {
                     Text(
-                        text = chatMessage.text,
+                        text = chatMessage.content,
                         modifier = Modifier.padding(16.dp)
                     )
                 }

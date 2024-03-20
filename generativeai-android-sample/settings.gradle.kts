@@ -20,6 +20,7 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        maven { url = uri("https://artifact.bytedance.com/repository/Volcengine/") }
     }
 }
 dependencyResolutionManagement {
@@ -28,8 +29,9 @@ dependencyResolutionManagement {
         mavenLocal()
         google()
         mavenCentral()
+        maven { url = uri("https://artifact.bytedance.com/repository/Volcengine/") }
     }
 }
 
-rootProject.name = "GenerativeAiSampleApp"
+rootProject.name = "InterviewAI"
 include(":app")

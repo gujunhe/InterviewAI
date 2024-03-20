@@ -17,9 +17,10 @@
 package com.google.ai.sample.feature.chat
 
 import androidx.compose.runtime.toMutableStateList
+import com.google.ai.sample.model.ChatMessage
 
 class ChatUiState(
-    messages: List<ChatMessage> = emptyList()
+    messages: List<com.google.ai.sample.model.ChatMessage> = emptyList()
 ) {
     private val _messages: MutableList<ChatMessage> = messages.toMutableStateList()
     val messages: List<ChatMessage> = _messages

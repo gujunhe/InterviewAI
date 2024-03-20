@@ -21,4 +21,9 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="colorPrimary">#F5F5F5</color>
+    <color name="colorPrimaryDark">#CFCFCF</color>
+    <color name="colorAccent">#008B8B</color>
+    <color name="colorWhite">#F8F8FF</color>
+    <color name="colorBlack">#000000</color>
 </resources>
