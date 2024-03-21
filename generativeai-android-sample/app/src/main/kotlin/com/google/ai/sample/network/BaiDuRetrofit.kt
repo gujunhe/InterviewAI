@@ -3,6 +3,7 @@ package com.google.ai.sample.network
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 
 object BaiDuRetrofit {
@@ -10,6 +11,9 @@ object BaiDuRetrofit {
     private const val BASE_URL = "https://aip.baidubce.com" // 替换为您的API基础URL
 
     private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
 //        .addInterceptor { chain ->
 //            // 在这里可以添加请求头或者其他拦截器
 //            val original = chain.request()

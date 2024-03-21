@@ -65,7 +65,7 @@ val GenerativeViewModelFactory = object : ViewModelProvider.Factory {
                         apiKey = BuildConfig.apiKey,
                         generationConfig = config
                     )
-                    ChatViewModel(generativeModel)
+                   // ChatViewModel(generativeModel)
                 }
 
                 else ->

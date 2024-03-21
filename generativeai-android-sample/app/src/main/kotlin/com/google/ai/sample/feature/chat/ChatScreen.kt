@@ -42,21 +42,28 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.currentCompositionLocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.bytedance.speech.speechengine.SpeechEngine
 import com.google.ai.sample.GenerativeViewModelFactory
+import com.google.ai.sample.MyViewModelFactory
 import com.google.ai.sample.R
 import com.google.ai.sample.model.ChatMessage
 import com.google.ai.sample.model.RoleType
@@ -64,11 +71,32 @@ import kotlinx.coroutines.launch
 @Preview
 @Composable
 internal fun ChatRoute(
-    chatViewModel: ChatViewModel = viewModel(factory = GenerativeViewModelFactory)
+    chatViewModel: ChatViewModel = viewModel(factory = MyViewModelFactory(LocalContext.current))
+
 ) {
     val chatUiState by chatViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val snapshotFlow = snapshotFlow { chatUiState.messages }
+    var mSpeechEngine: SpeechEngine? = null
+
+    fun handleNewMessage(newMessage: ChatMessage) {
+        // 在这里处理新添加的消息
+        // ...
+
+    }
+
+    LaunchedEffect(Unit) {
+
+    }
+    LaunchedEffect(snapshotFlow) {
+        snapshotFlow.collect { messages ->
+            val newMessage = messages.lastOrNull()
+            if (newMessage != null) {
+                handleNewMessage(newMessage)
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
