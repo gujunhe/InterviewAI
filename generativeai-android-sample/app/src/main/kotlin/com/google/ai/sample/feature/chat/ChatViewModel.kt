@@ -35,14 +35,19 @@ import com.google.ai.sample.SettingsActivity
 import com.google.ai.sample.model.ChatMessage
 import com.google.ai.sample.model.ChatRequest
 import com.google.ai.sample.model.ChatResponse
+import com.google.ai.sample.model.InterviewMessage
 import com.google.ai.sample.model.Message
 import com.google.ai.sample.model.RoleType
 import com.google.ai.sample.network.BaiDuApiService
 import com.google.ai.sample.network.BaiDuRetrofit
+import com.google.ai.sample.room.AppDatabase
+import com.google.ai.sample.room.InterviewQuestionRecord
+import com.google.ai.sample.room.InterviewRecord
 import com.google.ai.sample.settings.Settings
 import com.google.ai.sample.util.SensitiveDefines
 import com.google.ai.sample.util.SpeechDemoDefines
 import com.google.ai.sample.util.SpeechStreamPlayer
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,18 +56,37 @@ import org.json.JSONException
 import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Response
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 
 class ChatViewModel(
     context: Context
 ) : ViewModel(), SpeechEngine.SpeechListener, LifecycleObserver {
+
+    private val interviewRecordDao = AppDatabase.getInstance(context).interviewRecordDao()
+    private val interviewQuestionDao = AppDatabase.getInstance(context).interviewQuestionRecordDao()
+    // 获取当前日期和时间
+    private val currentDateTime = LocalDateTime.now()
+
+    // 创建日期时间格式化器，并设置中文语言环境
+    private val formatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH时mm分")
+        .withLocale(Locale.SIMPLIFIED_CHINESE)
+
+    // 格式化日期和时间
+    private val formattedDateTime = currentDateTime.format(formatter)
     private val historyChat = mutableListOf(
-        ChatMessage(role = RoleType.USER, content = "你好"),
+        ChatMessage(role = RoleType.USER, content = "我想让你担任面试官，面试的职位和职位描述为Java后端开发工程师。我将成为候选人，您将向我询问相关职位的面试问题，返回可以直接解析的JSON，不要一次写出所有的问题，一个问题一个问题地问我，等我做出回答后再给出下个问题，总共问我5个问题。每次我回答完一个问题后你只用返回个可以直接解析的json,不用返回其他内容，有五个参数，所有参数都是字符串类型，第一个参数是我回答的准确性'accuracy'：满分10分，第二个参数是对我回答的评价'comment'（真实面试时的语气），第三个参数是对我提问的下一个问题'question'，第四个参数是对我面试的总体评分'totalAccuracy',满分100,仅在面试结束时返回有效值，否则返回空值即可,第五个参数是对我的面似乎的总体评价'totalComment'，仅在面试结束时返回有效值，否则返回空值即可。面试结束时一定要返回总体评分'totalAccuracy'和总体评价'totalComment',同时也需要返回对上一个问题的评价'comment'和评分'accuracy',但由于是最后的回复，不用返回下一个问题'question'的有效值，赋值为空即可"),
         ChatMessage(
             role = RoleType.ASSISTANT,
-            content = "有什么能帮你的吗"
+            content = "你好，候选人"
         )
     )
+    private var lastQuestion : String = ""
+    private var lastAnswer : String = ""
     private val mTtsTextTypeArray = arrayOf(
         SpeechEngineDefines.TTS_TEXT_TYPE_PLAIN,
         SpeechEngineDefines.TTS_TEXT_TYPE_SSML
@@ -110,6 +134,8 @@ class ChatViewModel(
 
     // Offline Resource Manager
     private var mResourceManager: SpeechResourceManager? = null
+    private val interviewId = UUID.randomUUID().toString()
+    private var jobDescription : String = "java后端开发工程师"
 
     // Options Default Value
     private var mCurAppId: String = SensitiveDefines.APPID
@@ -155,6 +181,26 @@ class ChatViewModel(
 
 
     private val accessToken: String? = getToken()
+
+    fun setJobDescription(jobDescription:String){
+        // 创建一个新的ChatMessage对象来替换旧的第一个消息
+        val interviewRecord : InterviewRecord
+
+        if(jobDescription.isNotEmpty()) {
+            this.jobDescription = jobDescription
+            val newChatMessage = ChatMessage(
+                role = RoleType.USER,
+                content = "我想让你担任面试官，面试的职位和职位描述为$jobDescription。我将成为候选人，您将向我询问相关职位的面试问题，返回可以直接解析的JSON，不要一次写出所有的问题，一个问题一个问题地问我，等我做出回答后再给出下个问题，总共问我5个问题。每次我回答完一个问题后你只用返回个可以直接解析的json,不用返回其他内容，有五个参数，所有参数都是字符串类型，第一个参数是我回答的准确性'accuracy'：满分10分，第二个参数是对我回答的评价'comment'（真实面试时的语气），第三个参数是对我提问的下一个问题'question'，第四个参数是对我面试的总体评分'totalAccuracy',满分100,仅在面试结束时返回有效值，否则返回空值即可,第五个参数是对我的面似乎的总体评价'totalComment'，仅在面试结束时返回有效值，否则返回空值即可。面试结束时一定要返回总体评分'totalAccuracy'和总体评价'totalComment',同时也需要返回对上一个问题的评价'comment'和评分'accuracy',但由于是最后的回复，不用返回下一个问题'question'的有效值，赋值为空即可"
+            )
+            historyChat[0] = newChatMessage
+            interviewRecord = InterviewRecord(interviewId = interviewId,jobDescription = jobDescription, interviewTime = formattedDateTime, overallEvaluation = "", overallScore = "0")
+        }else{
+            interviewRecord = InterviewRecord(interviewId = interviewId,jobDescription = "java后端开发工程师", interviewTime = formattedDateTime, overallEvaluation = "", overallScore = "0")
+        }
+        viewModelScope.launch {
+            interviewRecordDao.insert(interviewRecord)
+        }
+    }
     fun sendMessage(userMessage: String) {
         // Add a pending message
         _uiState.value.addMessage(
@@ -168,6 +214,7 @@ class ChatViewModel(
             content = userMessage,
             role = RoleType.USER,
         ))
+        lastAnswer = userMessage
         viewModelScope.launch {
             try {
                 val token = accessToken ?: getToken()
@@ -184,26 +231,80 @@ class ChatViewModel(
                                 Log.d("NetWorkLog", response.body().toString())
                                 _uiState.value.replaceLastPendingMessage()
                                 response.body()?.result?.let { modelResponse ->
-                                    _uiState.value.addMessage(
-                                        ChatMessage(
-                                            content = modelResponse,
-                                            role = RoleType.ASSISTANT,
-                                            isPending = false
+//                                    //合成语音
+//                                    resultText = modelResponse
+//                                    // 准备待合成的文本
+//                                    if (!prepareTextList()) {
+//                                        speechError("{err_code:3006, err_msg:\"Invalid input text.\"}")
+//                                        return
+//                                    }
+//                                    startEngineBtnClicked()
+//                                    triggerSynthesis()
+                                    val gson = Gson()
+                                    val lines = modelResponse.lines()
+                                    val interviewMessage = gson.fromJson(lines.subList(1, lines.size - 1).joinToString("\n"),InterviewMessage::class.java)
+                                    if(interviewMessage.totalComment!=null&&interviewMessage.totalComment.isNotEmpty()){
+                                        _uiState.value.addMessage(
+                                            ChatMessage(
+                                                content = interviewMessage.comment + interviewMessage.totalComment,
+                                                role = RoleType.ASSISTANT,
+                                                isPending = false
+                                            ),
                                         )
-                                    )
+                                    }
+                                    else if(interviewMessage.question!=null) {
+                                        _uiState.value.addMessage(
+                                            ChatMessage(
+                                                content = interviewMessage.comment + interviewMessage.question,
+                                                role = RoleType.ASSISTANT,
+                                                isPending = false
+                                            ),
+                                        )
+                                    }
                                     historyChat.add(ChatMessage(
                                         content = modelResponse,
                                         role = RoleType.ASSISTANT,
                                     ))
-                                    //合成语音
-                                    resultText = modelResponse
-                                    // 准备待合成的文本
-                                    if (!prepareTextList()) {
-                                        speechError("{err_code:3006, err_msg:\"Invalid input text.\"}")
-                                        return
+                                    //启动tts引擎
+                                    //startEngineBtnClicked(interviewMessage.comment+interviewMessage.question)
+
+                                    if(interviewMessage.totalComment !=null&& interviewMessage.totalComment.isNotEmpty()){
+                                        val interviewRecord:InterviewRecord = InterviewRecord(
+                                            interviewId =interviewId,
+                                            interviewTime = formattedDateTime,
+                                            jobDescription = jobDescription,
+                                            overallScore = interviewMessage.totalAccuracy,
+                                            overallEvaluation = interviewMessage.totalComment
+                                        )
+                                        val questionRecord : InterviewQuestionRecord = InterviewQuestionRecord(
+                                            questionRecordId = UUID.randomUUID().toString(),
+                                            interviewId = interviewId,
+                                            question = lastQuestion,
+                                            userAnswer = lastAnswer,
+                                            answerScore = interviewMessage.accuracy,
+                                            answerEvaluation = interviewMessage.comment
+                                        )
+                                        viewModelScope.launch {
+                                            interviewRecordDao.update(interviewRecord)
+                                            interviewQuestionDao.insert(questionRecord)
+                                        }
+                                    }else{
+                                        if(lastQuestion.isNotEmpty()){
+                                            val questionRecord : InterviewQuestionRecord = InterviewQuestionRecord(
+                                                questionRecordId = UUID.randomUUID().toString(),
+                                                interviewId = interviewId,
+                                                question = lastQuestion,
+                                                userAnswer = lastAnswer,
+                                                answerScore = interviewMessage.accuracy,
+                                                answerEvaluation = interviewMessage.comment
+                                            )
+                                            viewModelScope.launch {
+                                                interviewQuestionDao.insert(questionRecord)
+                                            }
+
+                                        }
                                     }
-                                    startEngineBtnClicked()
-                                    triggerSynthesis()
+                                    lastQuestion = interviewMessage.question
 
                                 }
                             }
@@ -471,15 +572,15 @@ class ChatViewModel(
     }
 
     fun speechStartSynthesis(data: String?) {
-            updateSynthesisMap(data)
+//            updateSynthesisMap(data)
     }
     fun speechFinishSynthesis(data: String?) {
-        if (mRetryCount < TTS_MAX_RETRY_COUNT) {
-            mRetryCount = TTS_MAX_RETRY_COUNT
-        }
-            if (!mTtsSynthesisFromPlayer) {
-                synthesisNextSentence()
-            }
+//        if (mRetryCount < TTS_MAX_RETRY_COUNT) {
+//            mRetryCount = TTS_MAX_RETRY_COUNT
+//        }
+//            if (!mTtsSynthesisFromPlayer) {
+//                synthesisNextSentence()
+//            }
 
     }
 
@@ -560,7 +661,7 @@ class ChatViewModel(
             if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
                 Log.e(SpeechDemoDefines.TAG, "send directive syncstop failed, $ret")
             } else {
-                configStartTtsParams()
+                configStartTtsParams(text)
                 Log.i(SpeechDemoDefines.TAG, "启动引擎")
                 Log.i(SpeechDemoDefines.TAG, "Directive: DIRECTIVE_START_ENGINE")
                 ret = mSpeechEngine!!.sendDirective(SpeechEngineDefines.DIRECTIVE_START_ENGINE, "")
@@ -628,6 +729,157 @@ class ChatViewModel(
         )
     }
 
+    private fun configStartTtsParams(text: String?) {
+        //【必需配置】TTS 使用场景
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_SCENARIO_STRING,
+            SpeechEngineDefines.TTS_SCENARIO_TYPE_NORMAL
+        )
+        if (text != null) {
+            mCurTtsText = text
+        }
+        //【必需配置】需合成的文本，不可超过 80 字
+        mSpeechEngine!!.setOptionString(SpeechEngineDefines.PARAMS_KEY_TTS_TEXT_STRING, mCurTtsText)
+        //【可选配置】需合成的文本的类型，支持直接传文本(TTS_TEXT_TYPE_PLAIN)和传 SSML 形式(TTS_TEXT_TYPE_SSML)的文本
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_TEXT_TYPE_STRING,
+            mTtsTextTypeArray[mSettings!!.getOptions(R.string.tts_text_type_title).chooseIdx]
+        )
+        //【可选配置】用于控制 TTS 音频的语速，支持的配置范围参考火山官网 语音技术/语音合成/离在线语音合成SDK/参数说明 文档
+        mSpeechEngine!!.setOptionDouble(
+            SpeechEngineDefines.PARAMS_KEY_TTS_SPEED_RATIO_DOUBLE,
+            mSettings!!.getDouble(R.string.config_tts_speak_speed)
+        )
+        //【可选配置】用于控制 TTS 音频的音量，支持的配置范围参考火山官网 语音技术/语音合成/离在线语音合成SDK/参数说明 文档
+        mSpeechEngine!!.setOptionDouble(
+            SpeechEngineDefines.PARAMS_KEY_TTS_VOLUME_RATIO_DOUBLE,
+            mSettings!!.getDouble(R.string.config_tts_audio_volume)
+        )
+        //【可选配置】用于控制 TTS 音频的音高，支持的配置范围参考火山官网 语音技术/语音合成/离在线语音合成SDK/参数说明 文档
+        mSpeechEngine!!.setOptionDouble(
+            SpeechEngineDefines.PARAMS_KEY_TTS_PITCH_RATIO_DOUBLE,
+            mSettings!!.getDouble(R.string.config_tts_audio_pitch)
+        )
+        mTtsSilenceDuration = mSettings!!.getInt(R.string.config_tts_silence_duration)
+        //【可选配置】是否在文本的每句结尾处添加静音段，单位：毫秒，默认为 0ms
+        mSpeechEngine!!.setOptionInt(
+            SpeechEngineDefines.PARAMS_KEY_TTS_SILENCE_DURATION_INT,
+            mTtsSilenceDuration
+        )
+        if (mDisablePlayerReuse) {
+            //【可选配置】用于控制 SDK 播放器所用的音源,默认为媒体音源
+            mSpeechEngine!!.setOptionInt(
+                SpeechEngineDefines.PARAMS_KEY_AUDIO_STREAM_TYPE_INT,
+                mSettings!!.getInt(R.string.config_player_stream_type)
+            )
+        }
+        //【可选配置】是否使用 SDK 内置播放器播放合成出的音频，默认为 true
+        mSpeechEngine!!.setOptionBoolean(
+            SpeechEngineDefines.PARAMS_KEY_TTS_ENABLE_PLAYER_BOOL,
+            mSettings!!.getBoolean(R.string.config_sdk_player)
+        )
+        //【可选配置】是否令 SDK 通过回调返回合成的音频数据，默认不返回。
+        // 开启后，SDK 会流式返回音频，收到 MESSAGE_TYPE_TTS_AUDIO_DATA_END 回调表示当次合成所有的音频已经全部返回
+        mSpeechEngine!!.setOptionInt(
+            SpeechEngineDefines.PARAMS_KEY_TTS_DATA_CALLBACK_MODE_INT,
+            if (mSettings!!.getBoolean(R.string.config_tts_data_callback) || mSettings!!.getBoolean(
+                    R.string.config_demo_player
+                )
+            ) 2 else 0
+        )
+
+        // ------------------------ 在线合成相关配置 -----------------------
+        var curVoiceOnline = mSettings!!.getString(R.string.config_voice_online)
+        if (curVoiceOnline.isEmpty()) {
+            curVoiceOnline = mSettings!!.getOptionsValue(R.string.config_voice_online)
+        }
+        mCurVoiceOnline = curVoiceOnline
+        Log.d(SpeechDemoDefines.TAG, "Current online voice: $mCurVoiceOnline")
+        //【必需配置】在线合成使用的发音人代号
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_VOICE_ONLINE_STRING,
+            mCurVoiceOnline
+        )
+        var curVoiceTypeOnline = mSettings!!.getString(R.string.config_voice_type_online)
+        if (curVoiceTypeOnline.isEmpty()) {
+            curVoiceTypeOnline = mSettings!!.getOptionsValue(R.string.config_voice_type_online)
+        }
+        mCurVoiceTypeOnline = curVoiceTypeOnline
+        Log.d(SpeechDemoDefines.TAG, "Current online voice type: $mCurVoiceTypeOnline")
+        //【必需配置】在线合成使用的音色代号
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_VOICE_TYPE_ONLINE_STRING,
+            mCurVoiceTypeOnline
+        )
+
+        //【可选配置】是否打开在线合成的服务端缓存，默认关闭
+        mSpeechEngine!!.setOptionBoolean(
+            SpeechEngineDefines.PARAMS_KEY_TTS_ENABLE_CACHE_BOOL,
+            mSettings!!.getBoolean(R.string.enable_cache)
+        )
+        //【可选配置】指定在线合成的语种，默认为空，即不指定
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_LANGUAGE_ONLINE_STRING,
+            ""
+        )
+        //【可选配置】是否启用在线合成的情感预测功能
+        mSpeechEngine!!.setOptionBoolean(
+            SpeechEngineDefines.PARAMS_KEY_TTS_WITH_INTENT_BOOL,
+            mSettings!!.getBoolean(R.string.config_tts_with_intent)
+        )
+        //【可选配置】指定在线合成的情感，例如 happy, sad 等
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_EMOTION_STRING,
+            mSettings!!.getString(R.string.config_tts_emotion)
+        )
+        //【可选配置】需要返回详细的播放进度或需要启用断点续播功能时应配置为 1, 否则配置为 0 或不配置
+        mSpeechEngine!!.setOptionInt(
+            SpeechEngineDefines.PARAMS_KEY_TTS_WITH_FRONTEND_INT,
+            if (mSettings!!.getBoolean(R.string.config_tts_enable_resume_from_breakpoint)) 1 else 0
+        )
+        //【可选配置】使用复刻音色
+        mSpeechEngine!!.setOptionBoolean(
+            SpeechEngineDefines.PARAMS_KEY_TTS_USE_VOICECLONE_BOOL,
+            mSettings!!.getBoolean(R.string.config_tts_use_voiceclone)
+        )
+        //【可选配置】在开启前述使用复刻音色的开关后，制定复刻音色所用的后端集群
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_BACKEND_CLUSTER_STRING,
+            mSettings!!.getString(R.string.config_backend_cluster)
+        )
+
+        // ------------------------ 离线合成相关配置 -----------------------
+        var curVoiceOffline = mSettings!!.getString(R.string.config_voice_offline)
+        if (curVoiceOffline.isEmpty()) {
+            curVoiceOffline = mSettings!!.getOptionsValue(R.string.config_voice_offline)
+        }
+        mCurVoiceOffline = curVoiceOffline
+        Log.d(SpeechDemoDefines.TAG, "Current offline voice: $mCurVoiceOffline")
+        //【必需配置】离线合成使用的发音人代号
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_VOICE_OFFLINE_STRING,
+            mCurVoiceOffline
+        )
+        var curVoiceTypeOffline = mSettings!!.getString(R.string.config_voice_type_offline)
+        if (curVoiceTypeOffline.isEmpty()) {
+            curVoiceTypeOffline = mSettings!!.getOptionsValue(R.string.config_voice_type_offline)
+        }
+        mCurVoiceTypeOffline = curVoiceTypeOffline
+        Log.d(SpeechDemoDefines.TAG, "Current offline voice type: $mCurVoiceTypeOffline")
+        //【必需配置】离线合成使用的音色代号
+        mSpeechEngine!!.setOptionString(
+            SpeechEngineDefines.PARAMS_KEY_TTS_VOICE_TYPE_OFFLINE_STRING,
+            mCurVoiceTypeOffline
+        )
+
+        //【可选配置】是否降低离线合成的 CPU 利用率，默认关闭
+        // 打开该配置会使离线合成的实时率变大，仅当必要（例如为避免系统主动杀死CPU占用持续过高的进程）时才应开启
+        mSpeechEngine!!.setOptionBoolean(
+            SpeechEngineDefines.PARAMS_KEY_TTS_LIMIT_CPU_USAGE_BOOL,
+            mSettings!!.getBoolean(R.string.tts_limit_cpu_usage)
+        )
+    }
+
     private fun triggerSynthesis() {
         configSynthesisParams()
         // DIRECTIVE_SYNTHESIS 是连续合成必需的一个指令，在成功调用 DIRECTIVE_START_ENGINE 之后，每次合成新的文本需要再调用 DIRECTIVE_SYNTHESIS 指令
@@ -662,7 +914,7 @@ class ChatViewModel(
 //        //【可选配置】用于控制 TTS 音频的语速，支持的配置范围参考火山官网 语音技术/语音合成/离在线语音合成SDK/参数说明 文档
 //        mSpeechEngine!!.setOptionDouble(
 //            SpeechEngineDefines.PARAMS_KEY_TTS_SPEED_RATIO_DOUBLE,
-//            mTtsSpeakSpeed
+//         ‘   mTtsSpeakSpeed
 //        )
 //        mTtsAudioVolume = mSettings!!.getDouble(R.string.config_tts_audio_volume)
 //        //【可选配置】用于控制 TTS 音频的音量，支持的配置范围参考火山官网 语音技术/语音合成/离在线语音合成SDK/参数说明 文档

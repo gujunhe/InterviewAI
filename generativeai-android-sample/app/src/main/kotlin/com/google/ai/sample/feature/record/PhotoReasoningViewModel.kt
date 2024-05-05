@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.ai.sample.feature.multimodal
+package com.google.ai.sample.feature.record
 
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel

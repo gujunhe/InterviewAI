@@ -25,7 +25,7 @@ data class ChatRequest(
     val stop: List<String>? = null,
 
     @SerializedName("disable_search")
-    val disable_search: Boolean = false,
+    val disable_search: Boolean = true,
 
     @SerializedName("enable_citation")
     val enable_citation: Boolean = false,

@@ -14,34 +14,34 @@
  * limitations under the License.
  */
 
-package com.google.ai.sample.feature.text
+package com.google.ai.sample.feature.record
 
 /**
  * A sealed hierarchy describing the state of the text generation.
  */
-sealed interface SummarizeUiState {
+sealed interface PhotoReasoningUiState {
 
     /**
      * Empty state when the screen is first shown
      */
-    data object Initial: SummarizeUiState
+    data object Initial: PhotoReasoningUiState
 
     /**
      * Still loading
      */
-    data object Loading: SummarizeUiState
+    data object Loading: PhotoReasoningUiState
 
     /**
      * Text has been generated
      */
     data class Success(
         val outputText: String
-    ): SummarizeUiState
+    ): PhotoReasoningUiState
 
     /**
      * There was an error generating text
      */
     data class Error(
         val errorMessage: String
-    ): SummarizeUiState
+    ): PhotoReasoningUiState
 }

@@ -31,8 +31,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.bytedance.speech.speechengine.SpeechEngineGenerator
 import com.google.ai.sample.feature.chat.ChatRoute
-import com.google.ai.sample.feature.multimodal.PhotoReasoningRoute
-import com.google.ai.sample.feature.text.SummarizeRoute
+import com.google.ai.sample.feature.history.HistoryRoute
+import com.google.ai.sample.feature.history.HistoryScreen
+import com.google.ai.sample.feature.record.PhotoReasoningRoute
+import com.google.ai.sample.feature.resume.ProfileEditor
+import com.google.ai.sample.feature.resume.SummarizeRoute
 import com.google.ai.sample.model.TokenResponse
 import com.google.ai.sample.network.BaiDuApiService
 import com.google.ai.sample.network.BaiDuRetrofit
@@ -58,12 +61,16 @@ class MainActivity : ComponentActivity() {
         }
         CoroutineScope(Dispatchers.IO).launch {
             val apiService = BaiDuRetrofit.createService(BaiDuApiService::class.java)
-            apiService.getToken("client_credentials","NHBMZ3uZzmjSm0t4HwX1gGYN","lVdx0Qi1keZ68p40nspdhBdUYBzlhGVt").enqueue(object : retrofit2.Callback<TokenResponse>{
+            apiService.getToken(
+                "client_credentials",
+                "NHBMZ3uZzmjSm0t4HwX1gGYN",
+                "lVdx0Qi1keZ68p40nspdhBdUYBzlhGVt"
+            ).enqueue(object : retrofit2.Callback<TokenResponse> {
                 override fun onResponse(
                     call: Call<TokenResponse>,
                     response: Response<TokenResponse>
                 ) {
-                    Log.d("NetWorkLog",response.body().toString())
+                    Log.d("NetWorkLog", response.body().toString())
                     response.body()?.accessToken?.let { saveToken(it) }
                 }
 
@@ -90,20 +97,31 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate(routeId)
                             })
                         }
-                        composable("summarize") {
+                        composable("resume") {
                             SummarizeRoute()
                         }
-                        composable("photo_reasoning") {
+                        composable("interview_record") {
                             PhotoReasoningRoute()
                         }
                         composable("chat") {
                             ChatRoute()
+                        }
+
+                        composable("chat_history") {
+                            HistoryRoute()
+                        }
+
+                        composable("profileEditor") {
+                            ProfileEditor()
                         }
                     }
                 }
             }
         }
     }
+
+
+
     fun saveToken(token: String) {
         val editor = MyApplication.getSharedPreferences().edit()
         editor.putString("TOKEN_KEY", token)

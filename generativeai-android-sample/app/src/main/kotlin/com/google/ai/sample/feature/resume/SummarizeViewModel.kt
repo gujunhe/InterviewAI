@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.ai.sample.feature.text
+package com.google.ai.sample.feature.resume
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

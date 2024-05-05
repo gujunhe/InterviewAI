@@ -22,8 +22,8 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.generationConfig
 import com.google.ai.sample.feature.chat.ChatViewModel
-import com.google.ai.sample.feature.multimodal.PhotoReasoningViewModel
-import com.google.ai.sample.feature.text.SummarizeViewModel
+import com.google.ai.sample.feature.record.PhotoReasoningViewModel
+import com.google.ai.sample.feature.resume.SummarizeViewModel
 
 val GenerativeViewModelFactory = object : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(

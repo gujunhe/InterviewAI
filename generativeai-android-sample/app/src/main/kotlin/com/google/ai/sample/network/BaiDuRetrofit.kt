@@ -1,5 +1,6 @@
 package com.google.ai.sample.network
 
+import com.google.android.material.tabs.TabLayout
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -25,6 +26,7 @@ object BaiDuRetrofit {
 //            chain.proceed(request)
 //        }
         .build()
+
 
     private val retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)

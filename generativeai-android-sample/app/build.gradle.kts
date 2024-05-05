@@ -18,7 +18,9 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    kotlin("kapt") version "1.9.20"
 }
+
 
 android {
     namespace = "com.google.ai.sample"
@@ -59,6 +61,8 @@ android {
     }
 
 
+
+
 }
 
 dependencies {
@@ -82,6 +86,7 @@ dependencies {
     implementation("androidx.navigation:navigation-ui-ktx:2.6.0")
     implementation("androidx.activity:activity:1.8.0")
     implementation("androidx.lifecycle:lifecycle-process:2.7.0")
+    implementation("com.google.android.gms:play-services-wallet:19.3.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
@@ -94,4 +99,15 @@ dependencies {
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.google.ai.client.generativeai:generativeai:0.2.0")
     implementation ("com.bytedance.speechengine:speechengine_tts_tob:5.4.6")
+    val room_version = "2.6.1"
+
+    implementation("androidx.room:room-runtime:$room_version")
+    //annotationProcessor("androidx.room:room-compiler:$room_version")
+    kapt("androidx.room:room-compiler:$room_version")
+    // 导入注解处理器
+    implementation("androidx.room:room-ktx:2.6.1")
+//    implementation(project(":core"))
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
+
+    implementation(files("libs/asr-realtime-release.aar"))
 }

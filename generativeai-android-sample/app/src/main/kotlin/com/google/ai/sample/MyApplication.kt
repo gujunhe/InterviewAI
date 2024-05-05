@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import com.bytedance.speech.speechengine.SpeechEngineGenerator
+import com.google.ai.sample.room.AppDatabase
 
 class MyApplication : Application() {
     companion object {

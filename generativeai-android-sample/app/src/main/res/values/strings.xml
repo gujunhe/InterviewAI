@@ -15,19 +15,25 @@
 <resources>
     <string name="app_name">Generative AI Sample App</string>
     <string name="action_go">Go</string>
-    <string name="action_try">Try it</string>
+    <string name="action_try">试试看</string>
 
     <!-- Menu strings -->
     <string name="menu_summarize_title">Generate text from text-only input</string>
     <string name="menu_summarize_description">Sample app that summarizes text</string>
     <string name="menu_reason_title">Generate text from text-and-image input (multimodal)</string>
     <string name="menu_reason_description">Sample app for uploading images and asking about them</string>
-    <string name="menu_chat_title">Build multi-turn conversations (chat)</string>
-    <string name="menu_chat_description">Sample app demonstrating a conversational UI</string>
-
+    <string name="menu_chat_title">基于大语言模型的AI面试</string>
+    <string name="menu_chat_description">根据岗位描述提供拟人化语音的AI模拟面试</string>
+    <string name="menu_chat_history_title">AI面试记录</string>
+    <string name="menu_chat__history_description">查看历史面试记录，大模型提供回答建议</string>
+    <string name="menu_interview_record_title">AI面试复盘</string>
+    <string name="menu_interview_record_description">真实面试实时录音，面试结束通过大模型生成面试复盘</string>
+    <string name="menu_resume_title">简历生成</string>
+    <string name="menu_resume_description">选择简历模板生成可导出简历，结合大模型提供简历优化建议</string>
     <!-- Summarize sample strings -->
     <string name="summarize_label">Text</string>
     <string name="summarize_hint">Enter text to summarize</string>
+    <string name="placeholder_search">搜索您的面试</string>
 
     <!-- Photo Reasoning sample strings -->
     <string name="reason_label">Question</string>
@@ -423,4 +429,26 @@
     <string name="config_dialog_tta_voice_type">dialog tta voice</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="input_config_first">请先输入配置信息</string>
+    <string name="start">启动</string>
+    <string name="read_config">读取配置</string>
+    <string name="invalid_para">appid或者projectId输入无效</string>
+    <string name="start_record">识别状态：开始录音</string>
+    <string name="end_record">识别状态：停止录音</string>
+    <string name="start_recognize">识别状态：语音流识别开始</string>
+    <string name="end_recognize">识别状态：语音流识别结束</string>
+    <string name="start_voice">识别状态：语音流开始</string>
+    <string name="end_voice">识别状态：语音流结束</string>
+    <string name="volume">音量：</string>
+    <string name="voice_db">分贝：</string>
+    <string name="start_voice_timeout">识别状态：开始说话超时</string>
+    <string name="end_voice_timeout">识别状态：结束说话超时</string>
+    <string name="cant_stop">识别状态：不存在该任务，无法停止</string>
+    <string name="cant_cancel">识别状态：不存在该任务，无法取消</string>
+    <string name="read_config_success">读取配置文件成功</string>
+    <string name="config_not_exist">配置文件不存在</string>
+    <string name="must_input">必填</string>
+    <string name="can_input">选填</string>
+    <string name="confirm_config">请确认信息</string>
+    <string name="confirm">确认</string>
 </resources>
